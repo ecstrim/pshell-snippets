@@ -30,3 +30,10 @@ if($val.ChargeStopPercentage -ne $StopP)
 {
  set-itemproperty -Path hklm:software\WOW6432Node\Lenovo\PWRMGRV\ConfKeys\Data\$BattSerial -Name "ChargeStopPercentage" -value $StopP
 }
+
+# test
+# lorem 
+# ipsum
+# dolor
+# sit
+# amet
