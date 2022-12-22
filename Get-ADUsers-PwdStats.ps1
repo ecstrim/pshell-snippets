@@ -74,7 +74,7 @@ foreach ($user in $allUsers) {
         Name                 = $userObject.Name
         Enabled              = $userObject.Enabled
         LastLogonDate        = $userObject.LastLogonDate
-        PwdLastSet           = $userObject.LastLogonDate
+        PwdLastSet           = $userObject.PwdLastSet
         PasswordNeverExpires = $userObject.PasswordNeverExpires
     }
 
