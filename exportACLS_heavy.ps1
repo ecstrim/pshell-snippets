@@ -1,15 +1,28 @@
 <#
-
-Exports the NTFS permissions for given target path
-
-It uses .NET libraries wherever possible to minimize memory consumption
-The usual powershell cmdlets where too slow and too memory hungry
-
-
-usage:
-
-.\exportACLS_heavy.ps1 -TargetPath "\\Server\Share\Folder" -DestinationPath "C:\Temp"
-
+.SYNOPSIS
+  Export NTFS permissions (ACL) 
+.DESCRIPTION
+  Intended for huge shared folders
+  Uses .NET libraries where possible to minimize memory consumption
+  The ususal PowerShell cmdlets were too hungry (Get-ChildItem & Get-ACL)
+.PARAMETER TargetPath
+    Mandatory, path to scan for NTFS permissions
+.PARAMETER TargetPath
+    Mandatory, path for the output files
+.INPUTS
+  None
+.OUTPUTS
+  CSV file stored in $DestinationPath\ACL-Export-<timestamp>.log
+  Log file stored in $DestinationPath\ACL-Export-Log-<timestamp>.log
+  Error paths log file stored in $DestinationPath\ACL-Export-Errors-<timestamp>.log
+.NOTES
+  Version:        1.0
+  Author:         Mihai Olaru
+  Creation Date:  2023-03-18
+  Purpose/Change: Initial script development
+  
+.EXAMPLE
+  .\exportACLS_heavy.ps1 -TargetPath "\\Server\Share\Folder" -DestinationPath "C:\Temp"
 #>
 
 
@@ -36,15 +49,15 @@ $LogStream.WriteLine((Get-Date).ToString() + " - Starting script")
 
 # Create or append to the error log file
 $ErrorStream = [System.IO.File]::AppendText($ErrorPath)
-$ErrorStream.WriteLine((Get-Date).ToString() + " - Starting script")
 
 # test if $TargetPath is accessible
-if (![System.IO.Directory]::Exists($Path)) {
+if (![System.IO.Directory]::Exists($TargetPath)) {
     $ErrorStream.WriteLine((Get-Date).ToString() + " - Target path is not accessible")
     $ErrorStream.WriteLine((Get-Date).ToString() + " - $($TargetPath)")
     $ErrorStream.WriteLine((Get-Date).ToString() + " - Exiting")
+    Write-Error "[NO_ACCESS] Could not access target $($TargetPath) - please check your permissions"
+    Exit 1
 }
-
 
 try {
     # Get all subdirectories recursively
@@ -70,13 +83,14 @@ try {
 
         if ( !$ACLs ) {
             $ErrorStream.WriteLine((Get-Date).ToString() + " - ACCESS ERROR: " + $Folder)
+            Write-Error "[NO_ACCESS] Could not access folder $($Folder) - please check your permissions"
             continue
         }
 
         # Loop through each ACL entry
         foreach ($ACL in $ACLs) {
             # Skip any access rules for the NT AUTHORITY or BUILTIN groups
-            if ($ACL.IdentityReference.Value.StartsWith("NT AUTHORITY\") -or $ACL.IdentityReference.Value.StartsWith("BUILTIN\") -or $ACL.IdentityReference.Value.Equals("Everyone")) {
+            if ($ACL.IdentityReference.Value.StartsWith("NT AUTHORITY\") -or $ACL.IdentityReference.Value.StartsWith("BUILTIN\") -or $ACL.IdentityReference.Value.Equals("Everyone") -or $ACL.IdentityReference.Value.Equals("CREATOR OWNER")) {
                 continue
             }
 
@@ -108,7 +122,13 @@ try {
     $ExportStream.Close()
 
     # Log success
+    $LogStream.WriteLine((Get-Date).ToString() + " - ")
+    $LogStream.WriteLine((Get-Date).ToString() + " - Processed $($Folders.Count) folders")
     $LogStream.WriteLine((Get-Date).ToString() + " - Script completed successfully")
+
+    $Folders | gm
+
+    $Folders
 }
 catch {
     # Log error
