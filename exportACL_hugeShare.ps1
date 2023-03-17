@@ -56,13 +56,12 @@ foreach ($folder in $folders) {
     $acl = Get-Acl $folder.FullName
     if ( $acl ) {
         foreach ($ace in $acl.Access) {
-            if (($ace.IdentityReference -ne "NT AUTHORITY\System") -and ($ace.IdentityReference -notlike "Builtin\*")) {
+            if (($ace.IdentityReference -ne "NT AUTHORITY\System") -and ($ace.IdentityReference -notlike "Builtin\*") -and ($ace.IdentityReference -ne "CREATOR OWNER") -and ($ace.IdentityReference -ne "Everyone")) {
                 $result = [ordered]@{
                     Folder = $folder.FullName
                     "User/Group" = $ace.IdentityReference
                     Permissions = $ace.FileSystemRights
                     AccessControlType = $ace.AccessControlType
-                    IdentityReference = $ace.IdentityReference
                     IsInherited = $ace.IsInherited
                     InheritanceFlags = $ace.InheritanceFlags
                     PropagationFlags = $ace.PropagationFlags
