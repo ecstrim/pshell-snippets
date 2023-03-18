@@ -68,6 +68,7 @@ try {
     $ExportStream.WriteLine("Folder,User or Group,Permissions,Inherited,Inheritance Flags,Propagation Flags")
 
     # Loop through each folder and get ACL information
+    $i = 0
     foreach ($Folder in $Folders) {
         $LogStream.WriteLine((Get-Date).ToString() + " - Processing folder " + $Folder)
 
@@ -77,13 +78,22 @@ try {
         }
         catch {
             # Log access error
-            $ErrorStream.WriteLine((Get-Date).ToString() + " - ERROR: " + $_.Exception.Message)
+            $ErrorStream.WriteLine((Get-Date).ToString() + " - (checkpoint line 81) ERROR: " + $_.Exception.Message)
             continue
         }
 
         if ( !$ACLs ) {
-            $ErrorStream.WriteLine((Get-Date).ToString() + " - ACCESS ERROR: " + $Folder)
-            Write-Error "[NO_ACCESS] Could not access folder $($Folder) - please check your permissions"
+            $ErrorStream.WriteLine((Get-Date).ToString() + " - ACL ERROR: " + $Folder)
+            Write-Warning "[NO_ACCESS] Could not read ACL for folder $($Folder) "
+
+            if (![System.IO.Directory]::Exists($Folder)) {
+                $cmsg = "   Looks like the folder does not exist"
+            } else {
+                $cmsg = "   Looks like the folder EXISTS"
+            }
+            $ErrorStream.WriteLine((Get-Date).ToString() + " - " + $cmsg)
+            Write-Warning $cmsg
+            Write-Warning " "
             continue
         }
 
@@ -116,6 +126,7 @@ try {
             $Line = '"' + $Folder + '","' + $ACL.IdentityReference + '",' + $ACL.FileSystemRights + ',' + $ACL.IsInherited + ',"' + $InheritanceFlags + '","' + $PropagationFlags + '"'
             $ExportStream.WriteLine($Line)
         }
+        $i++
     }
 
     # Close the CSV file
@@ -123,16 +134,13 @@ try {
 
     # Log success
     $LogStream.WriteLine((Get-Date).ToString() + " - ")
-    $LogStream.WriteLine((Get-Date).ToString() + " - Processed $($Folders.Count) folders")
+    $LogStream.WriteLine((Get-Date).ToString() + " - Processed $($i) folders")
     $LogStream.WriteLine((Get-Date).ToString() + " - Script completed successfully")
 
-    $Folders | gm
-
-    $Folders
 }
 catch {
     # Log error
-    $LogStream.WriteLine((Get-Date).ToString() + " - ERROR: " + $_.Exception.Message)
+    $LogStream.WriteLine((Get-Date).ToString() + " - (checkpoint line 143) ERROR: " + $_.Exception.Message)
 }
 finally {
     # Close the log files
