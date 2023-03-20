@@ -24,8 +24,6 @@
 .EXAMPLE
   .\exportACLS_heavy.ps1 -TargetPath "\\Server\Share\Folder" -DestinationPath "C:\Temp"
 #>
-
-
 param (
     [Parameter(Mandatory=$true)]
     [string]$TargetPath,
