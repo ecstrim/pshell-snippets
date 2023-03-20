@@ -60,7 +60,6 @@ if (![System.IO.Directory]::Exists($TargetPath)) {
 try {
     # Get all subdirectories recursively
     $Folders = [System.IO.Directory]::EnumerateDirectories($TargetPath, "*", [System.IO.SearchOption]::AllDirectories)
-
     # Create CSV file and write header row
     $ExportStream = New-Object -TypeName System.IO.StreamWriter -ArgumentList $ExportPath
     $ExportStream.WriteLine("Folder,User or Group,Permissions,Inherited,Inheritance Flags,Propagation Flags")
@@ -76,22 +75,17 @@ try {
         }
         catch {
             # Log access error
-            $ErrorStream.WriteLine((Get-Date).ToString() + " - (checkpoint line 81) ERROR: " + $_.Exception.Message)
+            Write-Warning (Get-Date).ToString() + "Could not get ACL for folder " + $Folder
+            $ErrorStream.WriteLine((Get-Date).ToString() + " - [ERROR:79] " + $_.Exception.Message)
             continue
         }
 
         if ( !$ACLs ) {
-            $ErrorStream.WriteLine((Get-Date).ToString() + " - ACL ERROR: " + $Folder)
-            Write-Warning "[NO_ACCESS] Could not read ACL for folder $($Folder) "
-
-            if (![System.IO.Directory]::Exists($Folder)) {
-                $cmsg = "   Looks like the folder does not exist"
-            } else {
-                $cmsg = "   Looks like the folder EXISTS"
-            }
-            $ErrorStream.WriteLine((Get-Date).ToString() + " - " + $cmsg)
-            Write-Warning $cmsg
-            Write-Warning " "
+            $cmsg = If (![System.IO.Directory]::Exists($Folder)) {"FOLDER_EXISTS"} Else {"FOLDER_NOT_FOUND"}
+            
+            $warnMessage = (Get-Date).ToString() + " - ACL ERROR: " + $cmsg + " '" + $Folder + "'"
+            $ErrorStream.WriteLine($warnMessage)
+            Write-Warning $warnMessage
             continue
         }
 
@@ -134,11 +128,21 @@ try {
     $LogStream.WriteLine((Get-Date).ToString() + " - ")
     $LogStream.WriteLine((Get-Date).ToString() + " - Processed $($i) folders")
     $LogStream.WriteLine((Get-Date).ToString() + " - Script completed successfully")
-
 }
 catch {
     # Log error
-    $LogStream.WriteLine((Get-Date).ToString() + " - (checkpoint line 143) ERROR: " + $_.Exception.Message)
+    $errorMessage = (Get-Date).ToString() + " - [ERROR:143] " + $_.Exception.Message
+    $LogStream.WriteLine($errorMessage)
+    $ErrorStream.WriteLine($errorMessage)
+    Write-Warning $errorMessage
+    Write-Error "[FATAL ERROR] Could not access folder"
+
+    $LogStream.Close()
+    $ErrorStream.Close()
+    $ExportStream.Close()
+
+
+    exit 2
 }
 finally {
     # Close the log files
