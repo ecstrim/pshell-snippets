@@ -65,11 +65,11 @@ $DeniedStream = New-Object -TypeName System.IO.StreamWriter -ArgumentList $Denie
 $DeniedStream.WriteLine("Folder,Error")
 
 # test if $TargetPath is accessible
-if (![System.IO.Directory]::Exists($FolderPath)) {
+if (![System.IO.Directory]::Exists($TargetPath)) {
     $ErrorStream.WriteLine((Get-Date).ToString() + " - Target path is not accessible")
-    $ErrorStream.WriteLine((Get-Date).ToString() + " - $($FolderPath)")
+    $ErrorStream.WriteLine((Get-Date).ToString() + " - $($TargetPath)")
     $ErrorStream.WriteLine((Get-Date).ToString() + " - Exiting")
-    Write-Error "[NO_ACCESS] Could not access target $($FolderPath) - please check your permissions"
+    Write-Error "[NO_ACCESS] Could not access target $($TargetPath) - please check your permissions"
 
     if ( $ExportStream ) { $ExportStream.Close() }
     if ( $LogStream ) { $LogStream.Close() }
@@ -80,7 +80,7 @@ if (![System.IO.Directory]::Exists($FolderPath)) {
 }
 
 # Create a DirectoryInfo object for the folder
-$folder = New-Object System.IO.DirectoryInfo -ArgumentList (Convert-Path -LiteralPath $FolderPath)
+$folder = New-Object System.IO.DirectoryInfo -ArgumentList (Convert-Path -LiteralPath $TargetPath)
 $totalFolders = 0
 
 # Function to iterate through subfolders and check access
