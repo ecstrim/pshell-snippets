@@ -53,3 +53,8 @@ foreach ($log in $logFiles) {
     "Total time taken: {0}" -f $elapsedTime.ToString() | Out-File -Append $outputFile
     
 }
+
+# Output total number of failed directories and files to the output file
+"`n=========================================================`n" | Out-File -Append $outputFile
+"`nTotal number of failed directories: $totalFailedDirs" | Out-File -Append $outputFile
+"`nTotal number of failed files: $totalFailedFiles" | Out-File -Append $outputFile
