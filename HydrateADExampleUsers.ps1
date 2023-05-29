@@ -1,3 +1,9 @@
+<#
+
+Just a script to quickly create an OU and some users
+
+#>
+
 # Import the necessary module
 Import-Module ActiveDirectory
 
