@@ -10,6 +10,16 @@ $delimiter = ","
 # Create an array to hold the results
 $results = @()
 
+# Initialize totals
+$totalDirs = $totalFiles = $totalBytes = @{
+    'Total'    = 0
+    'Copied'   = 0
+    'Skipped'  = 0
+    'Mismatch' = 0
+    'Failed'   = 0
+    'Extras'   = 0
+}
+
 # Get a list of the log files in the folder
 $logFiles = Get-ChildItem -Path $logFolder -Filter "*.log"
 
@@ -36,6 +46,11 @@ foreach ($logFile in $logFiles) {
         $failed = $splitLine[11]
         $extras = $splitLine[13]
 
+        # Add to totals
+        $totalDirs[$label] += $total -as [int]
+        $totalFiles[$label] += $copied -as [int]
+        $totalBytes[$label] += $skipped -as [int]
+
         $logStats | Add-Member -MemberType NoteProperty -Name "$label-Total" -Value $total
         $logStats | Add-Member -MemberType NoteProperty -Name "$label-Copied" -Value $copied
         $logStats | Add-Member -MemberType NoteProperty -Name "$label-Skipped" -Value $skipped
@@ -46,6 +61,29 @@ foreach ($logFile in $logFiles) {
 
     # Add the stats for this log file to the results array
     $results += $logStats
+}
+
+# Add totals to results
+$results += New-Object PSObject -Property @{
+    'LogFileName'    = 'Total'
+    'Dirs-Total'     = $totalDirs['Total']
+    'Dirs-Copied'    = $totalDirs['Copied']
+    'Dirs-Skipped'   = $totalDirs['Skipped']
+    'Dirs-Mismatch'  = $totalDirs['Mismatch']
+    'Dirs-Failed'    = $totalDirs['Failed']
+    'Dirs-Extras'    = $totalDirs['Extras']
+    'Files-Total'    = $totalFiles['Total']
+    'Files-Copied'   = $totalFiles['Copied']
+    'Files-Skipped'  = $totalFiles['Skipped']
+    'Files-Mismatch' = $totalFiles['Mismatch']
+    'Files-Failed'   = $totalFiles['Failed']
+    'Files-Extras'   = $totalFiles['Extras']
+    'Bytes-Total'    = $totalBytes['Total']
+    'Bytes-Copied'   = $totalBytes['Copied']
+    'Bytes-Skipped'  = $totalBytes['Skipped']
+    'Bytes-Mismatch' = $totalBytes['Mismatch']
+    'Bytes-Failed'   = $totalBytes['Failed']
+    'Bytes-Extras'   = $totalBytes['Extras']
 }
 
 # Export the results to a CSV file
