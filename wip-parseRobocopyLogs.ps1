@@ -1,37 +1,52 @@
-# Define log directory
-$logDir = "C:\path\to\logs"
+# Define the folder where your log files are stored
+$logFolder = "Path_to_your_log_folder"
 
-# Define output file
-$outputFile = "C:\path\to\output.txt"
+# Define the file where the results should be stored
+$outputFile = "Path_to_output_file.csv"
 
-# Get all log files in the log directory
-$logFiles = Get-ChildItem -Path $logDir -Filter "*.log"
+# Define the delimiter for the output file
+$delimiter = ","
 
-# Initialize total failed files and directories counters
-$totalFailedFiles = 0
-$totalFailedDirs = 0
+# Create an array to hold the results
+$results = @()
 
-# Iterate through each log file
+# Get a list of the log files in the folder
+$logFiles = Get-ChildItem -Path $logFolder -Filter "*.log"
+
+# Loop through each log file
 foreach ($logFile in $logFiles) {
-    # Parse log file for statistics
-    $stats = Select-String -Path $logFile.FullName -Pattern "^\s*Dirs\s*:\s*\d+" -Context 0, 12
+    # Read the contents of the log file
+    $logContent = Get-Content -Path $logFile.FullName
 
-    # Extract the number of failed files and directories from the statistics
-    $failedDirs = ($stats.Context.PostContext[0] -split '\s+')[5]
-    $failedFiles = ($stats.Context.PostContext[1] -split '\s+')[5]
+    # Find the lines with the statistics
+    $statLines = $logContent | Where-Object { $_ -like "    Dirs :*" -or $_ -like "   Files :*" -or $_ -like "   Bytes :*" -or $_ -like "   Times :*" }
 
-    # Add the numbers of failed files and directories to the total counters
-    $totalFailedDirs += [int]$failedDirs
-    $totalFailedFiles += [int]$failedFiles
+    # Create a custom object to hold the stats for this log file
+    $logStats = New-Object PSObject
+    $logStats | Add-Member -MemberType NoteProperty -Name "LogFileName" -Value $logFile.Name
 
-    # Output log file name, statistics, and numbers of failed files and directories to the output file
-    "`nLog file: $($logFile.Name)" | Out-File -Append $outputFile
-    $stats.Line | Out-File -Append $outputFile
-    $stats.Context.PostContext | Out-File -Append $outputFile
-    "Number of failed directories: $failedDirs" | Out-File -Append $outputFile
-    "Number of failed files: $failedFiles" | Out-File -Append $outputFile
+    # Parse the statistics and add them to the custom object
+    foreach ($line in $statLines) {
+        $splitLine = $line -split "\s+"
+        $label = $splitLine[1]
+        $total = $splitLine[3]
+        $copied = $splitLine[5]
+        $skipped = $splitLine[7]
+        $mismatch = $splitLine[9]
+        $failed = $splitLine[11]
+        $extras = $splitLine[13]
+
+        $logStats | Add-Member -MemberType NoteProperty -Name "$label-Total" -Value $total
+        $logStats | Add-Member -MemberType NoteProperty -Name "$label-Copied" -Value $copied
+        $logStats | Add-Member -MemberType NoteProperty -Name "$label-Skipped" -Value $skipped
+        $logStats | Add-Member -MemberType NoteProperty -Name "$label-Mismatch" -Value $mismatch
+        $logStats | Add-Member -MemberType NoteProperty -Name "$label-Failed" -Value $failed
+        $logStats | Add-Member -MemberType NoteProperty -Name "$label-Extras" -Value $extras
+    }
+
+    # Add the stats for this log file to the results array
+    $results += $logStats
 }
 
-# Output total number of failed directories and files to the output file
-"`nTotal number of failed directories: $totalFailedDirs" | Out-File -Append $outputFile
-"`nTotal number of failed files: $totalFailedFiles" | Out-File -Append $outputFile
+# Export the results to a CSV file
+$results | Export-Csv -Path $outputFile -Delimiter $delimiter -NoTypeInformation
