@@ -3,17 +3,16 @@
 Checks a list of IPs for http reachability by running an Invoke-WebRequest  
 
 #>
+$ipPrefix = "10.0.108"
 
-
-# start with the first IP address
-$ipAddresses = @("10.0.108.1")
+$ipAddresses = @()
 
 # non contigous ranges
 $ranges = 20..29 + 37..39 + 40..45 + 48..49 + 50..57
 
 # compose the ip list
 foreach ($number in $ranges) {
-    $ipAddresses += "10.0.108.$number"
+    $ipAddresses += "${ipPrefix}.$number"
 }
 
 foreach ($ip in $ipAddresses) {
