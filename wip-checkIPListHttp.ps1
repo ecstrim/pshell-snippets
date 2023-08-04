@@ -1,6 +1,6 @@
 <#
 
-Checks a list of IP 
+Checks a list of IPs for http reachability by running an Invoke-WebRequest  
 
 #>
 
@@ -12,15 +12,13 @@ $ipAddresses = @("10.0.108.1")
 $ranges = 20..29 + 37..39 + 40..45 + 48..49 + 50..57
 
 # Iterate through the ranges and add to the IP addresses array
-foreach ($range in $ranges) {
-    foreach ($number in $range) {
-        $ipAddresses += "10.0.108.$number"
-    }
+foreach ($number in $ranges) {
+    $ipAddresses += "10.0.108.$number"
 }
 
 # Iterate through the IP addresses and make a request to each
 foreach ($ip in $ipAddresses) {
-    Write-Host "Checking IP address: $ip"
+    Write-Host "Checking IP address: $ip" -ForegroundColor Cyan
     
     try {
         # Running Invoke-WebRequest against the IP
@@ -28,13 +26,19 @@ foreach ($ip in $ipAddresses) {
         
         # Checking if the request was successful
         if ($response.StatusCode -eq 200) {
-            Write-Host "Success: $($response.StatusCode)"
+            Write-Host "Success: $($response.StatusCode)" -ForegroundColor Green
+            Write-Host "Headers for ${ip}:`n $($response.Headers)" -ForegroundColor Green
         }
         else {
-            Write-Host "Failed with status code: $($response.StatusCode)"
+            Write-Host "Failed with status code: $($response.StatusCode)" -ForegroundColor Yellow
         }
     }
     catch {
-        Write-Host "Error connecting to $ip. Details: $_"
+        if ($_.Exception.Message -like "*timeout*") {
+            Write-Host "Timeout connecting to $ip." -ForegroundColor Red
+        }
+        else {
+            Write-Host "Error connecting to $ip. Details: $_" -ForegroundColor Magenta
+        }
     }
 }
