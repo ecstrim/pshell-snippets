@@ -3,7 +3,7 @@
 Checks a list of IPs for http reachability by running an Invoke-WebRequest  
 
 #>
-$ipPrefix = "10.0.108"
+$ipPrefix = "10.0.109"
 
 $ipAddresses = @()
 
