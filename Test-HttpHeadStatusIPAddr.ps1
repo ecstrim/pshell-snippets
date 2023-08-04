@@ -20,7 +20,7 @@ foreach ($ip in $ipAddresses) {
     
     try {
         # 
-        $response = Invoke-WebRequest -Uri "http://$ip" -TimeoutSec 5 -Method Head
+        $response = Invoke-WebRequest -Uri "http://$ip" -TimeoutSec 5 #-Method Head
         
         # check the request was successful
         if ($response.StatusCode -eq 200) {
