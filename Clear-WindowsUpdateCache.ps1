@@ -11,7 +11,17 @@ function Write-ToLog {
     $serverName = $env:COMPUTERNAME
     $logMessage = "$timestamp - $serverName - $message"
 
+    Write-Host $logMessage
     Add-Content -Path $logPath -Value $logMessage
+}
+
+# Function to get the size of a folder
+function Get-FolderSize {
+    param (
+        [string]$path
+    )
+
+    return (Get-ChildItem -Path $path -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
 }
 
 # Set the service to Manual start and log the operation
@@ -25,9 +35,13 @@ Write-ToLog "Stopped wuauserv service."
 # just to make sure the service is stopped
 Start-Sleep -Seconds 5
 
-# Rename the SoftwareDistribution folder and log the operation
 $targetPath = "C:\Windows\SoftwareDistribution"
 $renamedPath = "C:\Windows\SoftwareDistribution.old"
+
+# Calculate and log the size of the SoftwareDistribution folder before renaming
+$folderSizeBefore = Get-FolderSize -path $targetPath
+Write-ToLog ("Size of SoftwareDistribution folder before renaming: {0:N2} MB" -f $folderSizeBefore)
+# Rename the SoftwareDistribution folder and log the operation
 Rename-Item -Path $targetPath -NewName "SoftwareDistribution.old"
 Write-ToLog "Renamed SoftwareDistribution folder to SoftwareDistribution.old."
 
