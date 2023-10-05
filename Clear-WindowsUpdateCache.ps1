@@ -59,8 +59,11 @@ Write-ToLog "Started wuauserv service."
 Start-Sleep -Seconds 30
 
 # Delete the renamed folder and log the operation
-if (Test-Path $renamedPath -and Test-Path $targetPath) {
+if ((Test-Path $renamedPath) -and (Test-Path $targetPath)) {
     Remove-Item -Path $renamedPath -Recurse -Force
     Write-ToLog "Deleted the renamed SoftwareDistribution.old folder."
 }
 
+# Calculate and log the size of the recreated SoftwareDistribution folder
+$folderSizeAfter = Get-FolderSize -path $targetPath
+Write-ToLog ("Size of SoftwareDistribution folder after resetting: {0:N2} MB" -f $folderSizeAfter)
