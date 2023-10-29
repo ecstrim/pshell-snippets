@@ -4,6 +4,18 @@ $ADMIN_PASSWORD
 $DOMAIN_NAME
 
 #>
+
+# disable password complexity security policy
+$content = @"
+[Version]
+signature="$CHICAGO$"
+
+[System Access]
+PasswordComplexity = 0
+"@
+$content | Out-File -Path C:\DisableComplexity.inf
+secedit.exe /configure /db %windir%\security\local.sdb /cfg C:\DisableComplexity.inf /areas SECURITYPOLICY
+
 # identify adds drive
 $addsDriveLetter = ((Get-Volume | Where-Object { \$_.FileSystemLabel -eq 'ADDS' }).DriveLetter + ':')
 $addsDBPath = Join-Path \$addsDriveLetter 'ADDS\DB'
