@@ -17,7 +17,7 @@ The name of the domain to be created.
 The path where the log file will be created.
 
 .EXAMPLE
-.\YourScriptName.ps1 -ADMIN_PASSWORD "P@ssw0rd" -DOMAIN_NAME "example.com" -LOG_PATH "C:\logs\script.log"
+.\wip-prepare-dc1.ps1 -ADMIN_PASSWORD "P@ssw0rd" -DOMAIN_NAME "example.com" -LOG_PATH "C:\logs\script.log"
 
 .NOTES
 Ensure you run the script with elevated privileges as it modifies system security policies and installs ADDS.
