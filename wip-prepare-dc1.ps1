@@ -52,11 +52,6 @@ $addsLogPath = Join-Path $addsDriveLetter 'ADDS\LOG'
 $sysvolPath = Join-Path $addsDriveLetter 'ADDS\SYSVOL'
 Log "ADDS drive identified as $addsDriveLetter."
 
-# Create directories for ADDS
-Log "Creating directories for ADDS..."
-New-Item -Path $addsDBPath, $addsLogPath, $sysvolPath -ItemType Directory
-Log "Directories for ADDS created."
-
 # Install Active Directory Domain Services
 Log "Initiating ADDS installation..."
 $secureAdminPassword = ConvertTo-SecureString -String $ADMIN_PASSWORD -AsPlainText -Force
