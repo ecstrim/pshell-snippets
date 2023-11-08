@@ -38,7 +38,7 @@ function Log {
         [string]$Message
     )
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "$timestamp - $Message" | Out-File -Append -Path $LOG_PATH
+    "$timestamp - $Message" | Out-File -Append -FilePath $LOG_PATH
 }
 
 # Start logging
