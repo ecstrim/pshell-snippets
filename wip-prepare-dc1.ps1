@@ -3,9 +3,7 @@
 This script disables the password complexity security policy and installs Active Directory Domain Services.
 
 .DESCRIPTION
-The script first creates and applies a security policy to disable password complexity.
-It then identifies the ADDS drive based on a specified FileSystemLabel and creates directories for the ADDS database, logs, and SYSVOL.
-Finally, it initiates the installation of an Active Directory forest.
+do not use
 
 .PARAMETER ADMIN_PASSWORD
 The password for the domain administrator.
@@ -45,19 +43,6 @@ function Log {
 
 # Start logging
 Log "Script started."
-
-# disable password complexity security policy
-Log "Disabling password complexity security policy..."
-$content = @"
-[Version]
-signature="$CHICAGO$"
-
-[System Access]
-PasswordComplexity = 0
-"@
-$content | Out-File -Path C:\DisableComplexity.inf
-secedit.exe /configure /db %windir%\security\local.sdb /cfg C:\DisableComplexity.inf /areas SECURITYPOLICY
-Log "Password complexity security policy disabled."
 
 # identify adds drive
 Log "Identifying ADDS drive..."
