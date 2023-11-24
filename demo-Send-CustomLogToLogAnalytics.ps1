@@ -1,13 +1,10 @@
 <#
-
 Table name: FOO_CL
-
 Table schema:
 {
 	"TimeGenerated": "Datetime",
 	"RAW": "ciao"
 }	
-
 #>
 
 Add-Type -AssemblyName System.Web
@@ -18,7 +15,7 @@ $appSecret = ""; #the secret created for the above app - never store your secret
 $DcrImmutableId = ""
 $DceURI = ""
 $Table = "FOO_CL"
- 
+
 $log_entry = @{
     # Define the structure of log entry, as it will be sent
     TimeGenerated = Get-Date ([datetime]::UtcNow) -Format O
