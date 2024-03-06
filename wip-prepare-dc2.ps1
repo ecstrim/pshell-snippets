@@ -6,6 +6,9 @@ This script creates DC2
 do not use
 
 .PARAMETER ADMIN_PASSWORD
+The domain administrator username.
+
+.PARAMETER ADMIN_PASSWORD
 The password for the domain administrator.
 
 .PARAMETER DOMAIN_NAME
@@ -22,19 +25,22 @@ Ensure you run the script with elevated privileges as it modifies system securit
 #>
 
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
+    [string]$ADMIN_USER,
+
+    [Parameter(Mandatory = $true)]
     [string]$ADMIN_PASSWORD,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$DOMAIN_NAME,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$LOG_PATH
 )
 
 function Log {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Message
     )
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -56,7 +62,7 @@ Log "ADDS drive identified as $addsDriveLetter."
 Log "[DC2] Initiating ADDS installation..."
 # $secureAdminPassword = ConvertTo-SecureString -String $ADMIN_PASSWORD -AsPlainText -Force
 
-$cred = (New-Object System.Management.Automation.PSCredential ("$DOMAIN_NAME\\$VM_LOCAL_ADMIN_USER", (ConvertTo-SecureString -String "$VM_LOCAL_ADMIN_PASSWORD" -AsPlainText -Force)))
+$cred = (New-Object System.Management.Automation.PSCredential ("$DOMAIN_NAME\\$ADMIN_USER", (ConvertTo-SecureString -String "$ADMIN_PASSWORD" -AsPlainText -Force)))
 Add-Computer -DomainName $DOMAIN_NAME -Credential $cred
 Install-ADDSDomainController -DomainName $DOMAIN_NAME -Credential $cred -DatabasePath $addsDBPath -LogPath $addsLogPath -SysvolPath $sysvolPath -InstallDns:$true -NoRebootOnCompletion:$false -Force:$true
 Log "[DC2] ADDS installation initiated."
