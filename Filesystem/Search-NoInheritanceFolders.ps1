@@ -14,14 +14,9 @@ The path to the directory to scan for subdirectories.
 The path to the directory where the ACL export files and the summary CSV file will be saved. Defaults to 'C:\ACL_Exports' if not specified.
 
 .EXAMPLE
-.\Export-ACLs.ps1 -TargetDirectory "C:\Your\Target\Directory" -OutputDirectory "C:\Your\Output\Directory"
+.\Search-NoInheritanceFolders.ps1 -TargetDirectory "C:\Your\Target\Directory" -OutputDirectory "C:\Your\Output\Directory"
 Scans 'C:\Your\Target\Directory' and exports ACLs with non-inherited rules to 'C:\Your\Output\Directory', 
 then creates a summary CSV file in the output directory.
-
-.EXAMPLE
-.\Export-ACLs.ps1 -TargetDirectory "C:\Your\Target\Directory"
-Scans 'C:\Your\Target\Directory' and exports ACLs with non-inherited rules to the default output directory 'C:\ACL_Exports',
-then creates a summary CSV file in the default output directory.
 
 .NOTES
 Author: Mihai Olaru
@@ -33,7 +28,6 @@ param(
     [string]$TargetDirectory, 
     [string]$OutputDirectory = "C:\ACL_Exports" # Default value if not specified
 )
-
 
 # Load required assemblies
 Add-Type -AssemblyName System.Security
