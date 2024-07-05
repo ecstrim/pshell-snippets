@@ -29,15 +29,14 @@ Date: 2024-06-03
 Version: 1.0
 
 #>
-
-# Load required assemblies
-Add-Type -AssemblyName System.Security
-
-# Parameters for the script
 param(
     [string]$TargetDirectory, 
     [string]$OutputDirectory = "C:\ACL_Exports" # Default value if not specified
 )
+
+
+# Load required assemblies
+Add-Type -AssemblyName System.Security
 
 # Validate the existence of the TargetDirectory
 if (-not (Test-Path -Path $TargetDirectory -PathType Container)) {
