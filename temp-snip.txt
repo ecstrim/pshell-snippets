@@ -1,0 +1,9 @@
+function Get-WindowsKey {
+    $hklm = [microsoft.win32.registrykey]::OpenBaseKey('LocalMachine', 'Default')
+    $key = $hklm.OpenSubKey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion").GetValue("DigitalProductId")
+    $productKey = ([string]($key[52..66] -join '')) -replace '..', '-'
+    $productKey
+}
+
+$key = Get-WindowsKey
+Write-Output "Your Windows Server 2012 R2 product key is: $key"
