@@ -1,6 +1,6 @@
-# Define the path and number of days of inactivity
+# Define the path and number of days (90 days for the last 3 months)
 $path = "C:\Your\Path\Here"
-$daysThreshold = 365  # Change this to the number of days to check for
+$daysThreshold = 90  # This represents 3 months (you can adjust if needed)
 
 # Get the current date
 $currentDate = Get-Date
@@ -16,12 +16,12 @@ foreach ($firstLevelFolder in $firstLevelFolders) {
     foreach ($secondLevelFolder in $secondLevelFolders) {
         $lastAccessTime = (Get-Item $secondLevelFolder.FullName).LastAccessTime
         
-        # Calculate the difference in days
+        # Calculate the difference in days between now and the last access time
         $daysSinceLastAccess = ($currentDate - $lastAccessTime).Days
         
-        # If the second-level folder hasn't been accessed within the threshold, output the folder details
-        if ($daysSinceLastAccess -gt $daysThreshold) {
-            Write-Output "$($secondLevelFolder.FullName) was last accessed $daysSinceLastAccess days ago."
+        # If the folder has been accessed in the last 90 days, output the folder details
+        if ($daysSinceLastAccess -le $daysThreshold) {
+            Write-Output "$($secondLevelFolder.FullName) was accessed $daysSinceLastAccess days ago."
         }
     }
 }
