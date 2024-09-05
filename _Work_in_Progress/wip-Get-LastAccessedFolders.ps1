@@ -25,3 +25,25 @@ foreach ($firstLevelFolder in $firstLevelFolders) {
         }
     }
 }
+
+#-----------------------
+
+# Define the path
+$path = "C:\Your\Path\Here"
+
+# Get all first-level directories
+$folders = Get-ChildItem -Path $path -Directory
+
+# Loop through each folder and calculate the size
+foreach ($folder in $folders) {
+    $folderPath = $folder.FullName
+    
+    # Calculate folder size in bytes
+    $folderSizeBytes = (Get-ChildItem -Path $folderPath -Recurse | Measure-Object -Property Length -Sum).Sum
+    
+    # Convert size to GB
+    $folderSizeGB = [math]::Round($folderSizeBytes / 1GB, 2)
+    
+    # Output folder name and size
+    Write-Output "$($folder.Name) : $folderSizeGB GB"
+}
