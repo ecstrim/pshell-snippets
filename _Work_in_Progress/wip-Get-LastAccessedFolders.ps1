@@ -6,17 +6,22 @@ $daysThreshold = 365  # Change this to the number of days to check for
 $currentDate = Get-Date
 
 # Get all first-level directories
-$folders = Get-ChildItem -Path $path -Directory
+$firstLevelFolders = Get-ChildItem -Path $path -Directory
 
-# Loop through each folder and check the last access time
-foreach ($folder in $folders) {
-    $lastAccessTime = (Get-Item $folder.FullName).LastAccessTime
+# Loop through each first-level folder
+foreach ($firstLevelFolder in $firstLevelFolders) {
+    # Get all second-level directories inside each first-level folder
+    $secondLevelFolders = Get-ChildItem -Path $firstLevelFolder.FullName -Directory
     
-    # Calculate the difference in days
-    $daysSinceLastAccess = ($currentDate - $lastAccessTime).Days
-    
-    # If the folder hasn't been accessed within the threshold, output the folder details
-    if ($daysSinceLastAccess -gt $daysThreshold) {
-        Write-Output "$($folder.Name) was last accessed $daysSinceLastAccess days ago."
+    foreach ($secondLevelFolder in $secondLevelFolders) {
+        $lastAccessTime = (Get-Item $secondLevelFolder.FullName).LastAccessTime
+        
+        # Calculate the difference in days
+        $daysSinceLastAccess = ($currentDate - $lastAccessTime).Days
+        
+        # If the second-level folder hasn't been accessed within the threshold, output the folder details
+        if ($daysSinceLastAccess -gt $daysThreshold) {
+            Write-Output "$($secondLevelFolder.FullName) was last accessed $daysSinceLastAccess days ago."
+        }
     }
 }
