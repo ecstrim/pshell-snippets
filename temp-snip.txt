@@ -1,0 +1,29 @@
+function Get-WindowsProductKey {
+    param (
+        [string]$Path = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion",
+        [string]$DigitalProductId = "DigitalProductId"
+    )
+
+    $regValue = Get-ItemProperty -Path $Path -Name $DigitalProductId
+    $binArray = $regValue.$DigitalProductId[52..66]
+    $chars = "BCDFGHJKMPQRTVWXY2346789"
+    $productKey = ""
+
+    for ($i = 24; $i -ge 0; $i--) {
+        $current = 0
+        for ($j = 14; $j -ge 0; $j--) {
+            $current = $current * 256 -bxor $binArray[$j]
+            $binArray[$j] = [math]::Floor($current / 24)
+            $current = $current % 24
+        }
+        $productKey = $chars[$current] + $productKey
+        if (($i % 5) -eq 0 -and $i -ne 0) {
+            $productKey = "-" + $productKey
+        }
+    }
+
+    return $productKey
+}
+
+$productKey = Get-WindowsProductKey
+Write-Output "Your Windows Server 2012 R2 product key is: $productKey"
