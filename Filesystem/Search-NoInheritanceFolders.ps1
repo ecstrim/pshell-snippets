@@ -119,8 +119,12 @@ Try {
     }
 }
 Finally {
-    $runspacePool?.Close()
-    $md5?.Dispose()
+    if ($runspacePool) {
+        $runspacePool.Close()
+    }
+    if ($md5) {
+        $md5.Dispose()
+    }
 }
 
 # Export results to CSV
