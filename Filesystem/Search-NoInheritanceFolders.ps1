@@ -21,9 +21,9 @@ then creates a summary CSV file in the output directory.
 .NOTES
 Author: Mihai Olaru
 Date: 2024-06-03
-Version: 1.0
-
+Version: 1.3
 #>
+
 param(
     [string]$TargetDirectory, 
     [string]$OutputDirectory = "C:\ACL_Exports" # Default value if not specified
@@ -31,6 +31,9 @@ param(
 
 # Load required assemblies
 Add-Type -AssemblyName System.Security
+
+# Start timing execution
+$startTime = Get-Date
 
 # Validate the existence of the TargetDirectory
 if (-not (Test-Path -Path $TargetDirectory -PathType Container)) {
@@ -49,18 +52,47 @@ if (-not (Test-Path -Path $OutputDirectory)) {
     }
 }
 
-
 # Initialize DirectoryInfo object for the target directory
 $directoryInfo = New-Object System.IO.DirectoryInfo($TargetDirectory)
 
-# Enumerate all directories recursively
-Try {
-    $directories = $directoryInfo.EnumerateDirectories("*", [System.IO.SearchOption]::AllDirectories)
+# Log file for directories without access
+$accessDeniedLog = Join-Path $OutputDirectory "AccessDeniedLog.txt"
+
+# Define a recursive function for enumerating directories
+function Get-DirectoriesWithAccess {
+    param (
+        [System.IO.DirectoryInfo]$Directory
+    )
+    
+    $directories = @()
+    Try {
+        # Get all subdirectories
+        $subDirectories = $Directory.GetDirectories()
+        foreach ($subDir in $subDirectories) {
+            # Try accessing each subdirectory
+            Try {
+                $directories += $subDir
+                $directories += Get-DirectoriesWithAccess -Directory $subDir  # Recursively check subdirectories
+            }
+            Catch {
+                # Log access-denied directories
+                $errorMessage = "Access denied to directory: $($subDir.FullName)"
+                Write-Warning $errorMessage
+                Add-Content -Path $accessDeniedLog -Value $errorMessage
+            }
+        }
+    }
+    Catch {
+        # Log if the top-level directory can't be accessed
+        $errorMessage = "Access denied to directory: $($Directory.FullName)"
+        Write-Warning $errorMessage
+        Add-Content -Path $accessDeniedLog -Value $errorMessage
+    }
+    return $directories
 }
-Catch {
-    Write-Error "Error enumerating directories: $_"
-    exit 1
-}
+
+# Start directory enumeration
+$directories = Get-DirectoriesWithAccess -Directory $directoryInfo
 
 # Define the script block to execute for each directory
 $scriptBlock = {
@@ -83,7 +115,9 @@ $scriptBlock = {
         }
     }
     Catch {
-        Write-Output "Failed to process directory: $dir. Error: $_"
+        $errorMessage = "Failed to process directory: $($dir.FullName). Error: $_"
+        Write-Warning $errorMessage
+        Add-Content -Path $accessDeniedLog -Value $errorMessage
     }
     return $null
 }
@@ -92,21 +126,17 @@ $scriptBlock = {
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
 Try {
-    # Initialize DirectoryInfo object for the target directory
-    $directoryInfo = New-Object System.IO.DirectoryInfo($TargetDirectory)
-
-    # Enumerate all directories recursively using .NET directly
-    $directories = $directoryInfo.EnumerateDirectories("*", [System.IO.SearchOption]::AllDirectories)
-
     # Runspace pool setup
     $runspacePool = [runspacefactory]::CreateRunspacePool(1, [Environment]::ProcessorCount)
     $runspacePool.Open()
     $jobs = @()
 
     foreach ($dir in $directories) {
-        $powershell = [powershell]::Create().AddScript($scriptBlock).AddArgument($dir).AddArgument($md5).AddArgument($OutputDirectory)
-        $powershell.RunspacePool = $runspacePool
-        $jobs += [PSCustomObject]@{ Pipe = $powershell; Status = $powershell.BeginInvoke() }
+        if ($dir -ne $null) {
+            $powershell = [powershell]::Create().AddScript($scriptBlock).AddArgument($dir).AddArgument($md5).AddArgument($OutputDirectory)
+            $powershell.RunspacePool = $runspacePool
+            $jobs += [PSCustomObject]@{ Pipe = $powershell; Status = $powershell.BeginInvoke() }
+        }
     }
 
     $results = @()
@@ -119,8 +149,10 @@ Try {
     }
 }
 Finally {
+    # Clean up runspace pool and MD5 hasher
     if ($runspacePool) {
         $runspacePool.Close()
+        $runspacePool.Dispose()
     }
     if ($md5) {
         $md5.Dispose()
@@ -131,6 +163,10 @@ Finally {
 $filteredResults = $results | Where-Object { $_ -ne $null }
 $filteredResults | Export-Csv -Path (Join-Path $OutputDirectory "Directories_Export.csv") -NoTypeInformation
 
+# Stop timing execution
+$endTime = Get-Date
+$executionTime = $endTime - $startTime
+
 # Convert milliseconds to a TimeSpan and format it
 $timeSpan = [TimeSpan]::FromMilliseconds($executionTime.TotalMilliseconds)
 $hours = $timeSpan.Hours.ToString("00")
@@ -140,3 +176,4 @@ $seconds = $timeSpan.Seconds.ToString("00")
 # Output results and total execution time
 Write-Output "Total Execution Time: $hours hours, $minutes minutes, $seconds seconds"
 Write-Output "CSV with directory export info saved to $(Join-Path $OutputDirectory 'Directories_Export.csv')"
+Write-Output "Access denied directories logged to $accessDeniedLog"
