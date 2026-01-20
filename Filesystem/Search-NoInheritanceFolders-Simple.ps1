@@ -23,7 +23,7 @@ then creates a summary CSV file in the output directory.
 
 .NOTES
 Author: Mihai Olaru
-Date: 2024-06-03
+Date: 2026-01-20
 Version: 2.0
 #>
 
@@ -163,3 +163,4 @@ Write-Output "CSV with directory export info saved to $(Join-Path $OutputDirecto
 if ($accessDeniedErrors.Count -gt 0) {
     Write-Output "Access denied errors ($($accessDeniedErrors.Count)) logged to $accessDeniedLog"
 }
+
