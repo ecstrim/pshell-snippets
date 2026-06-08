@@ -107,14 +107,16 @@ function Get-SheetName {
 # Una riga per share: conteggi di base. Niente di ricavato dalle altre
 # share, ogni riga si calcola solo dal proprio gruppo.
 $summary = foreach ($g in $byShare) {
-    $folders = ($g.Group | Select-Object -ExpandProperty DirectoryFullName -Unique).Count
-    $denyCnt = ($g.Group | Where-Object { $_.AccessControlType -eq 'Deny' }).Count
+    $folders  = ($g.Group | Select-Object -ExpandProperty DirectoryFullName -Unique).Count
+    $denyCnt  = ($g.Group | Where-Object { $_.AccessControlType -eq 'Deny' }).Count
+    $unresCnt = ($g.Group | Where-Object { $_.IdentityUnresolved -eq 'True' }).Count
     [PSCustomObject]@{
         Share          = $g.Name
         Foglio         = Get-SheetName $g.Name
         CartelleEsportate = $folders
         RigheACE       = $g.Count
         ACE_Deny       = $denyCnt
+        ACE_NonRisolte = $unresCnt
     }
 }
 
@@ -132,8 +134,9 @@ $pkg = $summary | Export-Excel -Path $xlsxPath -WorksheetName 'Summary' `
 # gia' chiamato Get-SheetName, quindi si rigenerano gli stessi nomi nello
 # stesso ordine -> coerenza garantita.
 $usedNames = @{ 'Summary' = $true }
-$cols = 'ParentPath','FolderName','DirectoryFullName','Identity',
-        'AccessControlType','Rights','IsInherited','InheritanceFlags'
+$cols = 'ParentPath','FolderName','DirectoryFullName','Owner','Identity',
+        'IdentityUnresolved','AccessControlType','Rights','IsInherited',
+        'InheritanceFlags','PropagationFlags'
 
 $tableIdx = 0
 foreach ($g in $byShare) {
