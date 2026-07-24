@@ -26,6 +26,7 @@ param(
     [string]  $NpsExportDir     = 'C:\Temp',   # where the NPS export lands on the NPS host
     [switch]  $SkipNpsExport,                  # keep it fully read-only
     [switch]  $QuickTopologyOnly,              # skip health checks + server sweep for a fast re-run
+    [int]     $ActiveWithinDays = 0,           # sweep only servers seen in the last N days (0 = all)
     [int]     $ServerSweepTimeoutSec = 3       # per-server reachability timeout in the sweep
 )
 
@@ -146,7 +147,16 @@ if (-not $QuickTopologyOnly) {
             $out = dcdiag /s:$($dc.HostName) 2>&1
             $results = $out | Select-String 'passed test|failed test'
             $results | ForEach-Object { Write-Host ("    " + $_.ToString().Trim()) }
-            if ($out | Select-String 'failed test') { Flag "dcdiag reports failures on $($dc.HostName) - review before migrating." }
+            # Extract the names of failed tests. SystemLog just scans the event log for any
+            # error and is notoriously benign, so don't treat it as a migration blocker on
+            # its own - only flag if something that actually matters failed.
+            $failed = $out | Select-String 'failed test' | ForEach-Object { ($_.ToString() -split 'failed test')[-1].Trim() }
+            $real   = @($failed | Where-Object { $_ -ne 'SystemLog' })
+            if ($real.Count) {
+                Flag "dcdiag failures on $($dc.HostName): $($real -join ', ') - review before migrating."
+            } elseif ($failed) {
+                Write-Host "    Note: only SystemLog failed - event-log noise, not a DC health problem." -ForegroundColor DarkYellow
+            }
         } catch { Write-Warning ("dcdiag failed for $($dc.HostName): {0}" -f $_.Exception.Message) }
     }
 
@@ -267,13 +277,27 @@ if (-not $QuickTopologyOnly) {
     try {
         $servers = Get-ADComputer -Filter 'OperatingSystem -like "*Server*"' -Properties OperatingSystem, IPv4Address, LastLogonDate |
                    Sort-Object Name
+        # Optional: skip long-dead objects. AD hoards stale computer accounts (a 2003 boneyard
+        # is normal), and pinging 40 corpses is slow and noisy. 0 = sweep everything.
+        if ($ActiveWithinDays -gt 0) {
+            $cutoff = (Get-Date).AddDays(-$ActiveWithinDays)
+            $servers = $servers | Where-Object { $_.LastLogonDate -and $_.LastLogonDate -gt $cutoff }
+            Write-Host "  (Showing only servers with a logon in the last $ActiveWithinDays days.)" -ForegroundColor DarkGray
+        }
         foreach ($s in $servers) {
-            $reachable = Test-Connection -ComputerName $s.DNSHostName -Count 1 -Quiet -ErrorAction SilentlyContinue
+            # Stale objects can have a null DNSHostName, which blows up Test-Connection with a
+            # parameter-binding error that -ErrorAction can't catch. Guard the input first.
+            $target = if ($s.DNSHostName) { $s.DNSHostName } else { $s.Name }
+            if ([string]::IsNullOrWhiteSpace($target)) {
+                Write-Host ("  {0,-18} [no hostname - stale object?]" -f $s.Name) -ForegroundColor DarkGray
+                continue
+            }
+            $reachable = Test-Connection -ComputerName $target -Count 1 -Quiet -ErrorAction SilentlyContinue
             if (-not $reachable) {
                 Write-Host ("  {0,-18} [unreachable]  {1}" -f $s.Name, $s.OperatingSystem) -ForegroundColor DarkGray
                 continue
             }
-            $feat = Get-RemoteFeatures $s.DNSHostName
+            $feat = Get-RemoteFeatures $target
             $roles = if ($feat) { ($feat | Where-Object { $_ -in 'AD-Certificate','NPAS','DHCP','DNS','RDS-Licensing','Remote-Desktop-Services','FileAndStorage-Services','Web-Server','AD-Domain-Services','Print-Server','WDS','Hyper-V' }) -join ', ' } else { '(features unreadable)' }
             Write-Host ("  {0,-18} {1,-38} {2}" -f $s.Name, $s.OperatingSystem, $roles)
         }
