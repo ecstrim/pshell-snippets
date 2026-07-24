@@ -27,6 +27,9 @@ param(
     [switch]  $SkipNpsExport,                  # keep it fully read-only
     [switch]  $QuickTopologyOnly,              # skip health checks + server sweep for a fast re-run
     [int]     $ActiveWithinDays = 0,           # sweep only servers seen in the last N days (0 = all)
+    [switch]  $ScanEfsFiles,                   # opt-in: recursively scan for EFS-encrypted files
+    [string[]]$EfsScanServers,                 # servers to scan (used with -ScanEfsFiles)
+    [string[]]$EfsScanPaths,                   # paths to scan on each server (used with -ScanEfsFiles)
     [int]     $ServerSweepTimeoutSec = 3       # per-server reachability timeout in the sweep
 )
 
@@ -210,6 +213,75 @@ foreach ($caHost in $roleHosts.CA) {
     } catch { Write-Warning ("CA deep-dive failed on $caHost : {0}" -f $_.Exception.Message) }
 }
 if (-not $roleHosts.CA) { Write-Host "  No CA found on the DCs (check member servers in the sweep)." }
+
+# ----------------------------------------------------------------------------
+Write-Section "8b. EFS usage check (data-loss risk if the CA / recovery agent is lost)"
+# Why this matters: if EFS is in use, the private keys behind those EFS certs (and the
+# Data Recovery Agent) are the ONLY way to read the encrypted files. Lose or mishandle
+# them during a CA migration and the data is gone for good. So we check whether EFS is
+# actually being used before anyone touches the CA.
+#
+# IMPORTANT LIMITATION: this CA-database check only finds EFS certs the CA ISSUED.
+# Windows will happily mint a SELF-SIGNED EFS cert when no CA template is available, and
+# those won't show up here. So 'zero found' lowers the risk but does NOT prove EFS is
+# unused - for certainty, run the opt-in file scan (-ScanEfsFiles) further down.
+foreach ($caHost in $roleHosts.CA) {
+    Write-Host "`n  === CA issued-cert DB on $caHost ===" -ForegroundColor Yellow
+    try {
+        $efsRows = Invoke-Command -ComputerName $caHost -ErrorAction Stop -ScriptBlock {
+            # Disposition=20 == issued. Dump requester/template/expiry, keep EFS-family rows.
+            # 'EFS' matches both Basic EFS and EFS Recovery Agent templates.
+            $raw = certutil -view -restrict "Disposition=20" -out "Request.RequesterName,CertificateTemplate,Certificate.NotAfter" 2>&1
+            $raw | Select-String -Pattern 'EFS' | ForEach-Object { $_.ToString().Trim() }
+        }
+        if ($efsRows) {
+            $n = @($efsRows).Count
+            Write-Host "  CA-issued EFS-family certificates found (showing up to 30):"
+            $efsRows | Select-Object -First 30 | ForEach-Object { Write-Host ("    " + $_) }
+            if ($n -gt 30) { Write-Host ("    ... and $($n - 30) more") }
+            $recovery = @($efsRows | Where-Object { $_ -match 'EFSRecovery|Recovery' }).Count
+            Flag "EFS in use via CA on $caHost ($n issued EFS cert(s), $recovery recovery-agent). CA + DRA private keys are load-bearing for data recovery - back up and preserve through migration; do NOT let the CA key be regenerated."
+        } else {
+            Write-Host "  No CA-issued EFS certificates in the DB. (Still confirm no self-signed EFS via -ScanEfsFiles.)"
+        }
+    } catch { Write-Warning ("EFS CA-DB query failed on $caHost : {0}" -f $_.Exception.Message) }
+}
+Write-Host "`n  Manual check worth doing: Default Domain Policy > Computer Config > Windows Settings >"
+Write-Host "  Security Settings > Public Key Policies > Encrypting File System - is a Data Recovery Agent set?"
+
+# Opt-in ground-truth scan: look for actually-encrypted files on named servers/paths.
+if ($ScanEfsFiles) {
+    Write-Section "8c. EFS encrypted-file scan (ground truth - opt-in)"
+    if (-not $EfsScanServers -or -not $EfsScanPaths) {
+        Write-Host "  -ScanEfsFiles was set but -EfsScanServers / -EfsScanPaths were not. Skipping."
+        Write-Host "  Example: -ScanEfsFiles -EfsScanServers FILESRV1,FILESRV2 -EfsScanPaths 'D:\Shares','E:\Data'"
+    } else {
+        $encFlag = [System.IO.FileAttributes]::Encrypted
+        foreach ($fs in $EfsScanServers) {
+            Write-Host "`n  === Scanning $fs (recursive - this can be slow) ===" -ForegroundColor Yellow
+            try {
+                $hits = Invoke-Command -ComputerName $fs -ErrorAction Stop -ScriptBlock {
+                    param($paths, $flag)
+                    foreach ($p in $paths) {
+                        if (Test-Path $p) {
+                            Get-ChildItem -Path $p -Recurse -File -Force -ErrorAction SilentlyContinue |
+                                Where-Object { $_.Attributes -band $flag } |
+                                Select-Object -ExpandProperty FullName
+                        }
+                    }
+                } -ArgumentList (,$EfsScanPaths), $encFlag
+                if ($hits) {
+                    $n = @($hits).Count
+                    Write-Host ("  Encrypted files found: {0} (showing up to 20)" -f $n) -ForegroundColor Red
+                    $hits | Select-Object -First 20 | ForEach-Object { Write-Host ("    " + $_) }
+                    Flag "EFS-encrypted files present on $fs ($n found) - unrecoverable without the matching EFS/DRA keys. Preserve those keys through migration."
+                } else {
+                    Write-Host "  No EFS-encrypted files in the scanned paths."
+                }
+            } catch { Write-Warning ("EFS file scan failed on $fs : {0}" -f $_.Exception.Message) }
+        }
+    }
+}
 
 # ----------------------------------------------------------------------------
 Write-Section "9. NPS / RADIUS deep-dive"
